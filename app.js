@@ -4,7 +4,8 @@
 
 const SUPABASE_URL = "https://euzotawusyxcfjvaxdzi.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV1em90YXd1c3l4Y2ZqdmF4ZHppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc3OTE1ODAsImV4cCI6MjEwMzM2NzU4MH0.vsIISJhu7J-t0oPu95pPFvXCAOjm61AHJH-KONREvOg";
-const DICTIONARY_API = "https://api.dictionaryapi.dev/api/v2/entries/en";
+const DICTIONARY_API_HOST = "wordsapiv1.p.rapidapi.com";
+const DICTIONARY_API_KEY = "ea34ba0486msh364b59ecfe3e7cdp1bc8cajsne99d478a5cc3";
 
 let supabaseClient = null;
 let currentUserId = null; // real uuid from Supabase anonymous auth
@@ -116,29 +117,85 @@ function renderSubtitles() {
 // ------------------------------------------------------------
 // Dictionary lookup + modal
 // ------------------------------------------------------------
+
+// WordsAPI only returns real definitions for base/dictionary forms.
+// Inflected forms ("arrived", "running", "boxes") come back with no
+// `results` array. Guess likely base forms and retry so common subtitle
+// words still resolve to a definition.
+function guessBaseForms(word) {
+  const candidates = [];
+  if (word.endsWith("ies") && word.length > 4) candidates.push(word.slice(0, -3) + "y");
+  if (word.endsWith("ed") && word.length > 4) {
+    candidates.push(word.slice(0, -1));        // arrived -> arrive
+    candidates.push(word.slice(0, -2));         // walked -> walk
+    candidates.push(word.slice(0, -3));         // stopped -> stop (undo doubled consonant)
+  }
+  if (word.endsWith("ing") && word.length > 5) {
+    candidates.push(word.slice(0, -3) + "e");   // arriving -> arrive
+    candidates.push(word.slice(0, -3));         // running -> runn (fallback)
+    candidates.push(word.slice(0, -4));         // running -> run (undo doubled consonant)
+  }
+  if (word.endsWith("es") && word.length > 4) candidates.push(word.slice(0, -2));
+  if (word.endsWith("s") && word.length > 3) candidates.push(word.slice(0, -1));
+  return candidates;
+}
+
+async function fetchWordData(word) {
+  const response = await fetch(
+    `https://${DICTIONARY_API_HOST}/words/${encodeURIComponent(word.toLowerCase())}`,
+    {
+      headers: {
+        "X-RapidAPI-Key": DICTIONARY_API_KEY,
+        "X-RapidAPI-Host": DICTIONARY_API_HOST
+      }
+    }
+  );
+  if (!response.ok) return null;
+  return response.json();
+}
+
 async function showWordDefinition(word) {
   try {
-    const response = await fetch(`${DICTIONARY_API}/${encodeURIComponent(word.toLowerCase())}`);
-    if (!response.ok) {
+    let data = await fetchWordData(word);
+
+    if (!data?.results?.length) {
+      for (const candidate of guessBaseForms(word.toLowerCase())) {
+        const candidateData = await fetchWordData(candidate);
+        if (candidateData?.results?.length) {
+          data = candidateData;
+          break;
+        }
+      }
+    }
+
+    if (!data) {
       alert(`No definition found for "${word}"`);
       return;
     }
-    const data = await response.json();
-    const entry = data[0];
-    const meaning = entry.meanings?.[0]?.definitions?.[0]?.definition || "No definition available";
-    const pronunciation = entry.phonetic || "";
-    const audio = entry.phonetics?.find(p => p.audio)?.audio || "";
+    const firstResult = data.results?.[0];
+    const partOfSpeech = firstResult?.partOfSpeech ? `(${firstResult.partOfSpeech}) ` : "";
+    const meaning = firstResult ? partOfSpeech + firstResult.definition : "No definition available";
+    const pronunciationRaw = data.pronunciation;
+    const pronunciation = typeof pronunciationRaw === "string"
+      ? pronunciationRaw
+      : (pronunciationRaw?.all || "");
+    const resolvedWord = data.word || word;
 
-    document.getElementById("modalWord").textContent = entry.word;
-    document.getElementById("modalPronunciation").textContent = pronunciation;
+    document.getElementById("modalWord").textContent = resolvedWord;
+    document.getElementById("modalPronunciation").textContent = pronunciation ? `/${pronunciation}/` : "";
     document.getElementById("modalMeaning").textContent = meaning;
 
+    // WordsAPI's free tier doesn't provide an audio file, so we use the
+    // browser's built-in text-to-speech instead.
     const audioBtn = document.getElementById("modalAudioBtn");
     audioBtn.onclick = () => {
-      if (audio) new Audio(audio).play();
+      if (!window.speechSynthesis) return;
+      const utterance = new SpeechSynthesisUtterance(resolvedWord);
+      utterance.lang = "en-US";
+      speechSynthesis.speak(utterance);
     };
 
-    pendingWord = { word: entry.word, meaning };
+    pendingWord = { word: resolvedWord, meaning };
 
     const saveBtn = document.getElementById("modalSaveBtn");
     saveBtn.onclick = saveWordFromModal;
