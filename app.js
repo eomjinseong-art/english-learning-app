@@ -5,9 +5,9 @@
 const SUPABASE_URL = "https://euzotawusyxcfjvaxdzi.supabase.co";
 const SUPABASE_KEY = "sb_publishable_yljqpcquZJJJ_IIyui_PeQ_V1evvLM";
 const DICTIONARY_API = "https://api.dictionaryapi.dev/api/v2/entries/en";
-const USER_ID = "user@app.local";
 
 let supabase = null;
+let currentUserId = null; // real uuid from Supabase anonymous auth
 let allWords = [];
 let pendingWord = null; // word waiting to be saved from modal
 
@@ -18,13 +18,35 @@ function waitForSupabase(retries) {
   if (window.supabase && window.supabase.createClient) {
     supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     console.log("Supabase ready");
-    loadVocabulary();
-    loadReview();
-    loadStats();
+    initAuth();
   } else if (retries > 0) {
     setTimeout(() => waitForSupabase(retries - 1), 300);
   } else {
     console.error("Supabase failed to load from CDN");
+  }
+}
+
+// Signs the browser in anonymously (or reuses an existing session) so that
+// RLS policies keyed on auth.uid() = user_id work correctly.
+async function initAuth() {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (session) {
+      currentUserId = session.user.id;
+    } else {
+      const { data, error } = await supabase.auth.signInAnonymously();
+      if (error) throw error;
+      currentUserId = data.user.id;
+    }
+
+    console.log("Signed in as", currentUserId);
+    loadVocabulary();
+    loadReview();
+    loadStats();
+  } catch (error) {
+    console.error("Auth error:", error);
+    alert("Login failed. Please refresh the page. (" + error.message + ")");
   }
 }
 
@@ -140,7 +162,7 @@ async function saveWordFromModal() {
 
   try {
     const { error } = await supabase.from("vocabulary").insert([{
-      user_id: USER_ID,
+      user_id: currentUserId,
       word: pendingWord.word,
       meaning: pendingWord.meaning,
       sentence: "",
@@ -166,7 +188,7 @@ async function loadVocabulary() {
     const { data, error } = await supabase
       .from("vocabulary")
       .select("*")
-      .eq("user_id", USER_ID)
+      .eq("user_id", currentUserId)
       .order("timestamp", { ascending: false });
 
     if (error) throw error;
@@ -220,7 +242,7 @@ async function loadReview() {
     const { data, error } = await supabase
       .from("vocabulary")
       .select("*")
-      .eq("user_id", USER_ID)
+      .eq("user_id", currentUserId)
       .lte("next_review_date", today);
 
     if (error) throw error;
@@ -254,7 +276,7 @@ async function loadReview() {
 async function recordReview(wordId, isCorrect) {
   try {
     await supabase.from("vocabulary_reviews").insert([{
-      user_id: USER_ID,
+      user_id: currentUserId,
       vocabulary_id: wordId,
       reviewed_at: new Date().toISOString(),
       is_correct: isCorrect
@@ -287,8 +309,8 @@ async function recordReview(wordId, isCorrect) {
 // ------------------------------------------------------------
 async function loadStats() {
   try {
-    const { data: words } = await supabase.from("vocabulary").select("id").eq("user_id", USER_ID);
-    const { data: reviews } = await supabase.from("vocabulary_reviews").select("is_correct").eq("user_id", USER_ID);
+    const { data: words } = await supabase.from("vocabulary").select("id").eq("user_id", currentUserId);
+    const { data: reviews } = await supabase.from("vocabulary_reviews").select("is_correct").eq("user_id", currentUserId);
 
     const totalWords = words?.length || 0;
     const totalReviews = reviews?.length || 0;
