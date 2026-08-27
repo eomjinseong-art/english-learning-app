@@ -6,7 +6,7 @@ const SUPABASE_URL = "https://euzotawusyxcfjvaxdzi.supabase.co";
 const SUPABASE_KEY = "sb_publishable_yljqpcquZJJJ_IIyui_PeQ_V1evvLM";
 const DICTIONARY_API = "https://api.dictionaryapi.dev/api/v2/entries/en";
 
-let supabase = null;
+let supabaseClient = null;
 let currentUserId = null; // real uuid from Supabase anonymous auth
 let allWords = [];
 let pendingWord = null; // word waiting to be saved from modal
@@ -16,7 +16,7 @@ let pendingWord = null; // word waiting to be saved from modal
 // ------------------------------------------------------------
 function waitForSupabase(retries) {
   if (window.supabase && window.supabase.createClient) {
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     console.log("Supabase ready");
     initAuth();
   } else if (retries > 0) {
@@ -30,12 +30,12 @@ function waitForSupabase(retries) {
 // RLS policies keyed on auth.uid() = user_id work correctly.
 async function initAuth() {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await supabaseClient.auth.getSession();
 
     if (session) {
       currentUserId = session.user.id;
     } else {
-      const { data, error } = await supabase.auth.signInAnonymously();
+      const { data, error } = await supabaseClient.auth.signInAnonymously();
       if (error) throw error;
       currentUserId = data.user.id;
     }
@@ -161,7 +161,7 @@ async function saveWordFromModal() {
   if (!pendingWord) return;
 
   try {
-    const { error } = await supabase.from("vocabulary").insert([{
+    const { error } = await supabaseClient.from("vocabulary").insert([{
       user_id: currentUserId,
       word: pendingWord.word,
       meaning: pendingWord.meaning,
@@ -185,7 +185,7 @@ async function saveWordFromModal() {
 
 async function loadVocabulary() {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .from("vocabulary")
       .select("*")
       .eq("user_id", currentUserId)
@@ -222,7 +222,7 @@ async function loadVocabulary() {
 async function deleteWord(wordId) {
   if (!confirm("Delete this word?")) return;
   try {
-    const { error } = await supabase.from("vocabulary").delete().eq("id", wordId);
+    const { error } = await supabaseClient.from("vocabulary").delete().eq("id", wordId);
     if (error) throw error;
     await loadVocabulary();
     await loadReview();
@@ -239,7 +239,7 @@ async function deleteWord(wordId) {
 async function loadReview() {
   try {
     const today = new Date().toISOString().split("T")[0];
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .from("vocabulary")
       .select("*")
       .eq("user_id", currentUserId)
@@ -275,7 +275,7 @@ async function loadReview() {
 
 async function recordReview(wordId, isCorrect) {
   try {
-    await supabase.from("vocabulary_reviews").insert([{
+    await supabaseClient.from("vocabulary_reviews").insert([{
       user_id: currentUserId,
       vocabulary_id: wordId,
       reviewed_at: new Date().toISOString(),
@@ -291,7 +291,7 @@ async function recordReview(wordId, isCorrect) {
     const nextDate = new Date();
     nextDate.setDate(nextDate.getDate() + nextDays);
 
-    await supabase.from("vocabulary").update({
+    await supabaseClient.from("vocabulary").update({
       next_review_date: nextDate.toISOString().split("T")[0],
       correct_count: isCorrect ? (word.correct_count || 0) + 1 : 0
     }).eq("id", wordId);
@@ -309,8 +309,8 @@ async function recordReview(wordId, isCorrect) {
 // ------------------------------------------------------------
 async function loadStats() {
   try {
-    const { data: words } = await supabase.from("vocabulary").select("id").eq("user_id", currentUserId);
-    const { data: reviews } = await supabase.from("vocabulary_reviews").select("is_correct").eq("user_id", currentUserId);
+    const { data: words } = await supabaseClient.from("vocabulary").select("id").eq("user_id", currentUserId);
+    const { data: reviews } = await supabaseClient.from("vocabulary_reviews").select("is_correct").eq("user_id", currentUserId);
 
     const totalWords = words?.length || 0;
     const totalReviews = reviews?.length || 0;
