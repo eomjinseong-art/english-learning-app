@@ -1,11 +1,11 @@
-﻿* {
+* {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   min-height: 100vh;
   padding: 20px;
@@ -29,12 +29,12 @@ header {
 }
 
 header h1 {
-  font-size: 2.5em;
+  font-size: 2.2em;
   margin-bottom: 10px;
 }
 
 header p {
-  font-size: 1.1em;
+  font-size: 1em;
   opacity: 0.9;
 }
 
@@ -48,29 +48,41 @@ header p {
 }
 
 .section h2 {
-  font-size: 1.5em;
+  font-size: 1.4em;
   color: #667eea;
-  margin-bottom: 20px;
+  margin-bottom: 15px;
+}
+
+.hint {
+  color: #888;
+  font-size: 0.9em;
+  margin-bottom: 12px;
 }
 
 .input-group {
   display: flex;
   gap: 10px;
-  margin-bottom: 20px;
+  margin-bottom: 15px;
 }
 
 .input-group input,
-.input-group textarea {
+textarea {
   flex: 1;
   padding: 12px;
   border: 2px solid #ddd;
   border-radius: 8px;
   font-size: 1em;
   font-family: inherit;
+  width: 100%;
+}
+
+textarea {
+  margin-bottom: 12px;
+  resize: vertical;
 }
 
 .input-group input:focus,
-.input-group textarea:focus {
+textarea:focus {
   outline: none;
   border-color: #667eea;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
@@ -83,7 +95,7 @@ header p {
   font-size: 1em;
   cursor: pointer;
   font-weight: 600;
-  transition: all 0.3s;
+  transition: all 0.2s;
 }
 
 .btn-primary {
@@ -93,7 +105,7 @@ header p {
 
 .btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3);
 }
 
 .btn-danger {
@@ -114,9 +126,51 @@ header p {
   color: #333;
 }
 
+.player-container {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 10px;
+}
+
+.player-container iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+.subtitle-container {
+  background: #f8f9fa;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  padding: 20px;
+  margin-top: 15px;
+  line-height: 2;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.word {
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: all 0.15s;
+  display: inline-block;
+}
+
+.word:hover {
+  background: #667eea;
+  color: white;
+}
+
 .vocabulary-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 15px;
 }
 
@@ -124,20 +178,20 @@ header p {
   background: #f8f9fa;
   border: 1px solid #ddd;
   border-radius: 8px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 18px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .vocab-card h3 {
   color: #667eea;
-  font-size: 1.3em;
+  font-size: 1.2em;
   margin-bottom: 8px;
 }
 
 .vocab-card p {
   color: #666;
-  line-height: 1.6;
-  margin-bottom: 12px;
+  line-height: 1.5;
+  margin-bottom: 10px;
 }
 
 .vocab-card small {
@@ -157,9 +211,7 @@ header p {
 }
 
 .review-card h3 {
-  color: #333;
-  margin-bottom: 15px;
-  font-size: 1.2em;
+  margin-bottom: 12px;
 }
 
 .review-buttons {
@@ -214,18 +266,20 @@ header p {
   padding: 30px;
   border-radius: 12px;
   width: 90%;
-  max-width: 500px;
+  max-width: 480px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
 }
 
 .modal-content h3 {
   color: #667eea;
-  margin-bottom: 20px;
+  margin-bottom: 8px;
+  font-size: 1.5em;
 }
 
-.modal-content p {
-  margin-bottom: 15px;
-  line-height: 1.6;
+.pronunciation {
+  color: #999;
+  font-style: italic;
+  margin-bottom: 12px;
 }
 
 .close-btn {
@@ -240,18 +294,12 @@ header p {
 .placeholder {
   text-align: center;
   color: #999;
-  padding: 30px;
+  padding: 20px;
   font-style: italic;
 }
 
 @media (max-width: 768px) {
-  header h1 {
-    font-size: 1.8em;
-  }
-  .input-group {
-    flex-direction: column;
-  }
-  .section {
-    padding: 20px;
-  }
+  header h1 { font-size: 1.6em; }
+  .input-group { flex-direction: column; }
+  .section { padding: 20px; }
 }

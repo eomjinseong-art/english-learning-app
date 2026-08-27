@@ -5,37 +5,57 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>English Learning App</title>
   <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
   <div class="container">
     <header>
-      <h1>?? English Learning App</h1>
-      <p>Build your vocabulary with spaced repetition</p>
+      <h1>📚 English Learning App</h1>
+      <p>Watch YouTube, learn words, review with spaced repetition</p>
     </header>
 
+    <!-- Step 1: Load Video -->
     <div class="section">
-      <h2>Add New Word</h2>
+      <h2>Step 1. Load YouTube Video</h2>
       <div class="input-group">
-        <input type="text" id="wordInput" placeholder="Enter a word" maxlength="50">
-        <input type="text" id="meaningInput" placeholder="Enter meaning" maxlength="200">
-        <button class="btn btn-primary" onclick="addWord()">Add</button>
+        <input type="text" id="youtubeUrl" placeholder="Paste YouTube URL (e.g. https://youtube.com/watch?v=...)">
+        <button class="btn btn-primary" onclick="loadVideo()">Load</button>
+      </div>
+      <div id="playerContainer" class="player-container">
+        <p class="placeholder">Video will appear here</p>
       </div>
     </div>
 
+    <!-- Step 2: Paste Subtitles -->
+    <div class="section">
+      <h2>Step 2. Paste Subtitles / Script</h2>
+      <p class="hint">
+        On YouTube, click "..." below the video → "Show transcript" → copy the text → paste it below.
+      </p>
+      <textarea id="subtitleInput" placeholder="Paste the video transcript / script here..." rows="4"></textarea>
+      <button class="btn btn-primary" onclick="renderSubtitles()">Show Script</button>
+      <div id="subtitleContainer" class="subtitle-container">
+        <p class="placeholder">Click any word after pasting the script to see its meaning</p>
+      </div>
+    </div>
+
+    <!-- Vocabulary -->
     <div class="section">
       <h2>My Vocabulary (<span id="wordCount">0</span>)</h2>
       <div id="vocabularyList" class="vocabulary-list">
-        <p class="placeholder">No words yet. Add one above!</p>
+        <p class="placeholder">No words yet. Click a word above to save it!</p>
       </div>
     </div>
 
+    <!-- Review -->
     <div class="section">
-      <h2>Today'\''s Review (<span id="reviewCount">0</span> due)</h2>
+      <h2>Today's Review (<span id="reviewCount">0</span> due)</h2>
       <div id="reviewList" class="review-list">
         <p class="placeholder">No words to review today!</p>
       </div>
     </div>
 
+    <!-- Stats -->
     <div class="section">
       <h2>Statistics</h2>
       <div class="stats">
@@ -55,217 +75,20 @@
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js"></script>
-  <script>
-    let currentUserId = "user@app.local";
-    let allWords = [];
+  <!-- Word Definition Modal -->
+  <div id="wordModal" class="modal">
+    <div class="modal-content">
+      <h3 id="modalWord"></h3>
+      <p id="modalPronunciation" class="pronunciation"></p>
+      <p id="modalMeaning"></p>
+      <button class="btn btn-secondary" id="modalAudioBtn">🔊 Pronounce</button>
+      <div style="margin-top: 15px;">
+        <button class="btn btn-primary" id="modalSaveBtn">Save Word</button>
+        <button class="close-btn" onclick="closeModal()">Close</button>
+      </div>
+    </div>
+  </div>
 
-    async function init() {
-      await loadVocabulary();
-      await loadStats();
-      await loadReview();
-    }
-
-    async function addWord() {
-      const word = document.getElementById("wordInput").value.trim();
-      const meaning = document.getElementById("meaningInput").value.trim();
-
-      if (!word || !meaning) {
-        alert("Please fill in both fields");
-        return;
-      }
-
-      try {
-        const { data, error } = await supabase
-          .from("vocabulary")
-          .insert([{
-            user_id: currentUserId,
-            word: word,
-            meaning: meaning,
-            sentence: "",
-            timestamp: new Date().toISOString(),
-            next_review_date: new Date().toISOString().split("T")[0],
-            correct_count: 0
-          }]);
-
-        if (error) throw error;
-
-        document.getElementById("wordInput").value = "";
-        document.getElementById("meaningInput").value = "";
-        
-        await loadVocabulary();
-        await loadStats();
-      } catch (error) {
-        console.error("Error:", error);
-        alert("Failed to add word: " + error.message);
-      }
-    }
-
-    async function loadVocabulary() {
-      try {
-        const { data, error } = await supabase
-          .from("vocabulary")
-          .select("*")
-          .eq("user_id", currentUserId)
-          .order("timestamp", { ascending: false });
-
-        if (error) throw error;
-
-        allWords = data || [];
-        const container = document.getElementById("vocabularyList");
-
-        if (allWords.length === 0) {
-          container.innerHTML = "<p class=\"placeholder\">No words yet. Add one above!</p>";
-          document.getElementById("wordCount").textContent = "0";
-          return;
-        }
-
-        container.innerHTML = allWords.map(word => `
-          <div class="vocab-card">
-            <h3>${word.word}</h3>
-            <p>${word.meaning}</p>
-            <small>Added: ${new Date(word.timestamp).toLocaleDateString()}</small>
-            <div style="margin-top: 12px;">
-              <button class="btn btn-danger" onclick="deleteWord('\'${word.id}\'')">Delete</button>
-            </div>
-          </div>
-        `).join("");
-
-        document.getElementById("wordCount").textContent = allWords.length;
-      } catch (error) {
-        console.error("Error loading vocabulary:", error);
-      }
-    }
-
-    async function deleteWord(wordId) {
-      if (!confirm("Delete this word?")) return;
-
-      try {
-        const { error } = await supabase
-          .from("vocabulary")
-          .delete()
-          .eq("id", wordId);
-
-        if (error) throw error;
-        await loadVocabulary();
-        await loadStats();
-      } catch (error) {
-        console.error("Error:", error);
-        alert("Failed to delete word");
-      }
-    }
-
-    async function loadReview() {
-      try {
-        const today = new Date().toISOString().split("T")[0];
-        
-        const { data, error } = await supabase
-          .from("vocabulary")
-          .select("*")
-          .eq("user_id", currentUserId)
-          .lte("next_review_date", today);
-
-        if (error) throw error;
-
-        const dueWords = data || [];
-        const container = document.getElementById("reviewList");
-
-        if (dueWords.length === 0) {
-          container.innerHTML = "<p class=\"placeholder\">No words to review today!</p>";
-          document.getElementById("reviewCount").textContent = "0";
-          return;
-        }
-
-        container.innerHTML = dueWords.map(word => `
-          <div class="review-card">
-            <h3>${word.word}</h3>
-            <p style="margin-bottom: 15px; color: #999;">What does this mean?</p>
-            <div class="review-buttons">
-              <button class="btn btn-success" onclick="markCorrect('\'${word.id}\'')">? Correct</button>
-              <button class="btn btn-danger" onclick="markIncorrect('\'${word.id}\'')">? Wrong</button>
-            </div>
-          </div>
-        `).join("");
-
-        document.getElementById("reviewCount").textContent = dueWords.length;
-      } catch (error) {
-        console.error("Error loading review:", error);
-      }
-    }
-
-    async function markCorrect(wordId) {
-      await recordReview(wordId, true);
-    }
-
-    async function markIncorrect(wordId) {
-      await recordReview(wordId, false);
-    }
-
-    async function recordReview(wordId, isCorrect) {
-      try {
-        await supabase
-          .from("vocabulary_reviews")
-          .insert([{
-            user_id: currentUserId,
-            vocabulary_id: wordId,
-            reviewed_at: new Date().toISOString(),
-            is_correct: isCorrect
-          }]);
-
-        const word = allWords.find(w => w.id === wordId);
-        if (!word) return;
-
-        const schedule = [1, 3, 7, 14];
-        let nextDays = isCorrect ? schedule[Math.min(word.correct_count || 0, 3)] : 1;
-        
-        const nextDate = new Date();
-        nextDate.setDate(nextDate.getDate() + nextDays);
-
-        await supabase
-          .from("vocabulary")
-          .update({
-            next_review_date: nextDate.toISOString().split("T")[0],
-            correct_count: isCorrect ? (word.correct_count || 0) + 1 : 0
-          })
-          .eq("id", wordId);
-
-        await loadReview();
-        await loadStats();
-      } catch (error) {
-        console.error("Error:", error);
-        alert("Failed to record review");
-      }
-    }
-
-    async function loadStats() {
-      try {
-        const { data: words, error: e1 } = await supabase
-          .from("vocabulary")
-          .select("id")
-          .eq("user_id", currentUserId);
-
-        const { data: reviews, error: e2 } = await supabase
-          .from("vocabulary_reviews")
-          .select("is_correct")
-          .eq("user_id", currentUserId);
-
-        if (e1 || e2) throw new Error("Error loading stats");
-
-        const totalWords = words?.length || 0;
-        const totalReviews = reviews?.length || 0;
-        const correctReviews = reviews?.filter(r => r.is_correct).length || 0;
-        const accuracy = totalReviews > 0 ? Math.round((correctReviews / totalReviews) * 100) : 0;
-
-        document.getElementById("totalWords").textContent = totalWords;
-        document.getElementById("totalReviews").textContent = totalReviews;
-        document.getElementById("accuracy").textContent = accuracy + "%";
-      } catch (error) {
-        console.error("Error loading stats:", error);
-      }
-    }
-
-    window.addEventListener("DOMContentLoaded", init);
-  </script>
+  <script src="app.js"></script>
 </body>
 </html>
