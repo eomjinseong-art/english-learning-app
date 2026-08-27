@@ -3,7 +3,7 @@
 // ============================================================
 
 const SUPABASE_URL = "https://euzotawusyxcfjvaxdzi.supabase.co";
-const SUPABASE_KEY = "sb_publishable_yljqpcquZJJJ_IIyui_PeQ_V1evvLM";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV1em90YXd1c3l4Y2ZqdmF4ZHppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc3OTE1ODAsImV4cCI6MjEwMzM2NzU4MH0.vsIISJhu7J-t0oPu95pPFvXCAOjm61AHJH-KONREvOg";
 const DICTIONARY_API = "https://api.dictionaryapi.dev/api/v2/entries/en";
 
 let supabaseClient = null;
