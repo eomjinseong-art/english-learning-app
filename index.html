@@ -1,20 +1,18 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>English Learning App</title>
   <link rel="stylesheet" href="style.css">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
   <div class="container">
     <header>
-      <h1>📚 English Learning App</h1>
+      <h1>?? English Learning App</h1>
       <p>Build your vocabulary with spaced repetition</p>
     </header>
 
-    <!-- Add Word Section -->
     <div class="section">
       <h2>Add New Word</h2>
       <div class="input-group">
@@ -24,7 +22,6 @@
       </div>
     </div>
 
-    <!-- Vocabulary List -->
     <div class="section">
       <h2>My Vocabulary (<span id="wordCount">0</span>)</h2>
       <div id="vocabularyList" class="vocabulary-list">
@@ -32,15 +29,13 @@
       </div>
     </div>
 
-    <!-- Daily Review -->
     <div class="section">
-      <h2>Today's Review (<span id="reviewCount">0</span> due)</h2>
+      <h2>Today'\''s Review (<span id="reviewCount">0</span> due)</h2>
       <div id="reviewList" class="review-list">
         <p class="placeholder">No words to review today!</p>
       </div>
     </div>
 
-    <!-- Statistics -->
     <div class="section">
       <h2>Statistics</h2>
       <div class="stats">
@@ -60,29 +55,18 @@
     </div>
   </div>
 
-  <div id="definitionModal" class="modal">
-    <div class="modal-content">
-      <h3 id="modalWord"></h3>
-      <p id="modalDefinition"></p>
-      <p id="modalExample" style="font-style: italic; color: #999;"></p>
-      <button class="close-btn" onclick="closeModal()">Close</button>
-    </div>
-  </div>
-
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
   <script>
-    let currentUserId = DEFAULT_USER_ID;
+    let currentUserId = "user@app.local";
     let allWords = [];
-    let reviewStats = { total: 0, correct: 0 };
 
-    // Initialize
     async function init() {
       await loadVocabulary();
       await loadStats();
       await loadReview();
     }
 
-    // Add Word
     async function addWord() {
       const word = document.getElementById("wordInput").value.trim();
       const meaning = document.getElementById("meaningInput").value.trim();
@@ -114,11 +98,10 @@
         await loadStats();
       } catch (error) {
         console.error("Error:", error);
-        alert("Failed to add word");
+        alert("Failed to add word: " + error.message);
       }
     }
 
-    // Load Vocabulary
     async function loadVocabulary() {
       try {
         const { data, error } = await supabase
@@ -143,8 +126,8 @@
             <h3>${word.word}</h3>
             <p>${word.meaning}</p>
             <small>Added: ${new Date(word.timestamp).toLocaleDateString()}</small>
-            <div style="margin-top: 12px; display: flex; gap: 8px;">
-              <button class="btn btn-danger" onclick="deleteWord('${word.id}')" style="flex: 1;">Delete</button>
+            <div style="margin-top: 12px;">
+              <button class="btn btn-danger" onclick="deleteWord('\'${word.id}\'')">Delete</button>
             </div>
           </div>
         `).join("");
@@ -155,7 +138,6 @@
       }
     }
 
-    // Delete Word
     async function deleteWord(wordId) {
       if (!confirm("Delete this word?")) return;
 
@@ -174,7 +156,6 @@
       }
     }
 
-    // Load Review
     async function loadReview() {
       try {
         const today = new Date().toISOString().split("T")[0];
@@ -201,8 +182,8 @@
             <h3>${word.word}</h3>
             <p style="margin-bottom: 15px; color: #999;">What does this mean?</p>
             <div class="review-buttons">
-              <button class="btn btn-success" onclick="markCorrect('${word.id}')">✓ Correct</button>
-              <button class="btn btn-danger" onclick="markIncorrect('${word.id}')">✗ Wrong</button>
+              <button class="btn btn-success" onclick="markCorrect('\'${word.id}\'')">? Correct</button>
+              <button class="btn btn-danger" onclick="markIncorrect('\'${word.id}\'')">? Wrong</button>
             </div>
           </div>
         `).join("");
@@ -213,20 +194,16 @@
       }
     }
 
-    // Mark Correct
     async function markCorrect(wordId) {
       await recordReview(wordId, true);
     }
 
-    // Mark Incorrect
     async function markIncorrect(wordId) {
       await recordReview(wordId, false);
     }
 
-    // Record Review
     async function recordReview(wordId, isCorrect) {
       try {
-        // Add review record
         await supabase
           .from("vocabulary_reviews")
           .insert([{
@@ -236,18 +213,15 @@
             is_correct: isCorrect
           }]);
 
-        // Get current word
         const word = allWords.find(w => w.id === wordId);
         if (!word) return;
 
-        // Calculate next review date (Ebbinghaus)
-        const schedule = [1, 3, 7, 14]; // days
+        const schedule = [1, 3, 7, 14];
         let nextDays = isCorrect ? schedule[Math.min(word.correct_count || 0, 3)] : 1;
         
         const nextDate = new Date();
         nextDate.setDate(nextDate.getDate() + nextDays);
 
-        // Update word
         await supabase
           .from("vocabulary")
           .update({
@@ -264,7 +238,6 @@
       }
     }
 
-    // Load Stats
     async function loadStats() {
       try {
         const { data: words, error: e1 } = await supabase
@@ -292,11 +265,6 @@
       }
     }
 
-    function closeModal() {
-      document.getElementById("definitionModal").style.display = "none";
-    }
-
-    // Start app
     window.addEventListener("DOMContentLoaded", init);
   </script>
 </body>
